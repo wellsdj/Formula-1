@@ -264,3 +264,35 @@ export const constructorStandings = [
   { position: 4, team: "Mercedes", color: "#27F4D2", points: 244 },
   { position: 5, team: "Aston Martin", color: "#358C75", points: 142 },
 ];
+
+// Camera feeds for the video stage (dummy onboard selector)
+export const cameraFeeds = [
+  { id: "world", label: "World Feed", code: "TV", teamColor: "#E10600" },
+  { id: "ver", label: "Verstappen Onboard", code: "VER", teamColor: "#3671C6" },
+  { id: "lec", label: "Leclerc Onboard", code: "LEC", teamColor: "#E8002D" },
+  { id: "ham", label: "Hamilton Onboard", code: "HAM", teamColor: "#E8002D" },
+  { id: "nor", label: "Norris Onboard", code: "NOR", teamColor: "#FF8000" },
+  { id: "pit", label: "Pit Lane", code: "PIT", teamColor: "#737373" },
+  { id: "data", label: "Data Channel", code: "DATA", teamColor: "#00D632" },
+];
+
+// Live team radio feed (dummy)
+export const teamRadio = [
+  { id: 1, code: "VER", team: "Red Bull Racing", teamColor: "#3671C6", time: "L47", text: "The tyres are gone, mate. I'm struggling out here.", duration: "0:06", channel: "Driver" },
+  { id: 2, code: "VER", team: "Red Bull Racing", teamColor: "#3671C6", time: "L47", text: "Understood Max, we're looking at the gap. Box this lap, box.", duration: "0:04", channel: "Pit Wall" },
+  { id: 3, code: "LEC", team: "Ferrari", teamColor: "#E8002D", time: "L46", text: "What is Hamilton doing? He's so slow in sector two!", duration: "0:05", channel: "Driver" },
+  { id: 4, code: "NOR", team: "McLaren", teamColor: "#FF8000", time: "L45", text: "Great job Lando, you're catching them. Keep pushing, head down.", duration: "0:05", channel: "Pit Wall" },
+  { id: 5, code: "HAM", team: "Ferrari", teamColor: "#E8002D", time: "L44", text: "These backmarkers are not moving. I'm losing so much time.", duration: "0:07", channel: "Driver" },
+  { id: 6, code: "RUS", team: "Mercedes", teamColor: "#27F4D2", time: "L43", text: "Copy George. Plan B from here, manage the fronts.", duration: "0:04", channel: "Pit Wall" },
+  { id: 7, code: "PIA", team: "McLaren", teamColor: "#FF8000", time: "L42", text: "I think there's something on the floor, the balance changed.", duration: "0:06", channel: "Driver" },
+];
+
+// Tire status per car (compound, age, estimated temps — temps are MODELLED, not real sensor data)
+export const tireStatus = [
+  { code: "VER", teamColor: "#3671C6", compound: "M", age: 14, estTemp: 104, wear: 62, pressure: 22.1 },
+  { code: "LEC", teamColor: "#E8002D", compound: "M", age: 14, estTemp: 101, wear: 60, pressure: 22.0 },
+  { code: "HAM", teamColor: "#E8002D", compound: "H", age: 22, estTemp: 96, wear: 71, pressure: 21.8 },
+  { code: "RUS", teamColor: "#27F4D2", compound: "H", age: 22, estTemp: 94, wear: 69, pressure: 21.9 },
+  { code: "NOR", teamColor: "#FF8000", compound: "S", age: 7, estTemp: 112, wear: 38, pressure: 22.4 },
+  { code: "PIA", teamColor: "#FF8000", compound: "S", age: 7, estTemp: 110, wear: 40, pressure: 22.3 },
+];

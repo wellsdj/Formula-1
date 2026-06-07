@@ -1,4 +1,5 @@
 import './index.css'
+import { useState } from 'react'
 import { useOpenF1 } from './hooks/useOpenF1'
 import type { DriverRow } from './hooks/useOpenF1'
 import {
@@ -8,16 +9,29 @@ import {
   pitStops as fakePits,
   fastestLaps,
   championshipStandings,
+  cameraFeeds,
+  teamRadio,
+  tireStatus,
 } from './data/fakeData'
+
+const F1TV_URL = 'https://f1tv.formula1.com/'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function windDir(deg: number): string {
-  const dirs = ['N','NE','E','SE','S','SW','W','NW']
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
   return dirs[Math.round(deg / 45) % 8]
 }
 
-// ─── Header ─────────────────────────────────────────────────────────────────
+function PlayIcon({ size = 22, color = '#fff' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  )
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
 
 interface HeaderProps {
   raceName: string
@@ -28,7 +42,8 @@ interface HeaderProps {
 }
 
 function Header({ raceName, flag, lap, totalLaps, isLive }: HeaderProps) {
-  const flagClass = flag === 'GREEN' ? 'green' : flag === 'YELLOW' || flag === 'VIRTUAL_SAFETY_CAR' ? 'yellow' : 'red'
+  const flagClass =
+    flag === 'GREEN' ? 'green' : flag === 'YELLOW' || flag === 'VIRTUAL_SAFETY_CAR' ? 'yellow' : 'red'
   const flagLabel = flag === 'VIRTUAL_SAFETY_CAR' ? 'VSC' : flag === 'SAFETY_CAR' ? 'SC' : flag
 
   return (
@@ -36,7 +51,7 @@ function Header({ raceName, flag, lap, totalLaps, isLive }: HeaderProps) {
       <div className="header-left">
         <div className="header-wordmark">F<span>1</span></div>
         <div className="header-divider" />
-        <div className="header-subtitle">Live Dashboard</div>
+        <div className="header-subtitle">Cinema</div>
       </div>
       <div className="header-center">
         <span className="header-race-name">{raceName}</span>
@@ -44,65 +59,67 @@ function Header({ raceName, flag, lap, totalLaps, isLive }: HeaderProps) {
       </div>
       <div className="header-right">
         {totalLaps > 0 && (
-          <div className="header-lap">
-            LAP <em>{lap}</em> / {totalLaps}
-          </div>
+          <div className="header-lap">LAP <em>{lap}</em> / {totalLaps}</div>
         )}
-        <div className={`live-indicator${isLive ? '' : ' historical'}`}>
-          <span className="live-dot" style={isLive ? {} : { background: '#A3A3A3', animationPlayState: 'paused' }} />
+        <div className="live-indicator">
+          <span className="live-dot" style={isLive ? {} : { background: '#62626C', boxShadow: 'none', animationPlayState: 'paused' }} />
           {isLive ? 'Live' : 'Latest'}
         </div>
+        <a className="f1tv-btn" href={F1TV_URL} target="_blank" rel="noreferrer">
+          <PlayIcon size={13} /> Watch on F1 TV
+        </a>
       </div>
     </header>
   )
 }
 
-// ─── Race bar ────────────────────────────────────────────────────────────────
+// ─── Video stage ────────────────────────────────────────────────────────────────
 
-interface RaceBarProps {
-  circuit: string
-  sessionType: string
-  timeRemaining: string
-  lap: number
-  totalLaps: number
-}
+function VideoStage({ raceName, lap, totalLaps }: { raceName: string; lap: number; totalLaps: number }) {
+  const [activeCam, setActiveCam] = useState('world')
+  const active = cameraFeeds.find((c) => c.id === activeCam)!
 
-function RaceBar({ circuit, sessionType, timeRemaining, lap, totalLaps }: RaceBarProps) {
-  const pct = totalLaps > 0 ? Math.round((lap / totalLaps) * 100) : 0
   return (
-    <div className="race-bar">
-      <div className="race-stat">
-        <span className="race-stat-label">Circuit</span>
-        <span className="race-stat-value">{circuit}</span>
-      </div>
-      <div className="race-stat">
-        <span className="race-stat-label">Session</span>
-        <span className="race-stat-value">{sessionType}</span>
-      </div>
-      {timeRemaining && (
-        <div className="race-stat">
-          <span className="race-stat-label">Remaining</span>
-          <span className="race-stat-value red">{timeRemaining}</span>
+    <div className="stage-col">
+      <div className="video-stage">
+        <div className="stage-watermark">
+          <span className="stage-rec" /> {active.label}
         </div>
-      )}
-      {totalLaps > 0 && (
-        <div className="progress-wrap">
-          <div className="progress-label">
-            <span>Race Progress</span>
-            <span>{pct}%</span>
-          </div>
-          <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${pct}%` }} />
+        <div className="stage-corner">
+          {lap > 0 && totalLaps > 0 ? `LAP ${lap} / ${totalLaps}` : 'STANDBY'}
+        </div>
+        <div className="stage-center">
+          <a className="stage-play" href={F1TV_URL} target="_blank" rel="noreferrer" aria-label="Watch on F1 TV">
+            <PlayIcon size={30} />
+          </a>
+          <div>
+            <div className="stage-title">{raceName}</div>
+            <div className="stage-sub">
+              Live video isn't streamed in-app. Tap play to open the official F1 TV broadcast,
+              and keep this dashboard as your live data second screen.
+            </div>
           </div>
         </div>
-      )}
+      </div>
+      <div className="camera-bar">
+        {cameraFeeds.map((c) => (
+          <button
+            key={c.id}
+            className={`camera-chip${c.id === activeCam ? ' active' : ''}`}
+            onClick={() => setActiveCam(c.id)}
+          >
+            <span className="camera-chip-dot" style={{ background: c.teamColor }} />
+            {c.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
 
-// ─── Live Timing ─────────────────────────────────────────────────────────────
+// ─── Live timing ────────────────────────────────────────────────────────────────
 
-function LiveTiming({ drivers, lap }: { drivers: DriverRow[], lap: number }) {
+function LiveTiming({ drivers, lap }: { drivers: DriverRow[]; lap: number }) {
   return (
     <div className="card">
       <div className="card-header">
@@ -112,15 +129,8 @@ function LiveTiming({ drivers, lap }: { drivers: DriverRow[], lap: number }) {
       <table className="timing-table">
         <thead>
           <tr>
-            <th>Pos</th>
-            <th>Driver</th>
-            <th>Gap</th>
-            <th>Interval</th>
-            <th>Last Lap</th>
-            <th>Best Lap</th>
-            <th>Tire</th>
-            <th className="r">Speed</th>
-            <th className="r">DRS</th>
+            <th>Pos</th><th>Driver</th><th>Gap</th><th>Interval</th>
+            <th>Last Lap</th><th>Tire</th><th className="r">Spd</th><th className="r">DRS</th>
           </tr>
         </thead>
         <tbody>
@@ -139,7 +149,6 @@ function LiveTiming({ drivers, lap }: { drivers: DriverRow[], lap: number }) {
               <td><span className={`gap${d.position === 1 ? ' leader' : ''}`}>{d.gap}</span></td>
               <td className="gap">{d.interval}</td>
               <td>{d.lastLap}</td>
-              <td>{d.bestLap}</td>
               <td>
                 <span className={`tire-badge ${d.tire}`}>{d.tire}</span>
                 {d.tireAge > 0 && <span className="tire-age">{d.tireAge}</span>}
@@ -154,7 +163,7 @@ function LiveTiming({ drivers, lap }: { drivers: DriverRow[], lap: number }) {
   )
 }
 
-// ─── Telemetry ────────────────────────────────────────────────────────────────
+// ─── Telemetry ──────────────────────────────────────────────────────────────────
 
 function Telemetry({ driver }: { driver: DriverRow }) {
   return (
@@ -201,16 +210,90 @@ function Telemetry({ driver }: { driver: DriverRow }) {
   )
 }
 
+// ─── Team Radio ─────────────────────────────────────────────────────────────────
+
+function TeamRadio() {
+  return (
+    <div className="card">
+      <div className="card-header">
+        <div className="card-title"><span className="card-dot" />Team Radio</div>
+        <span className="card-meta">{teamRadio.length} clips</span>
+      </div>
+      <div className="radio-list">
+        {teamRadio.map((r) => (
+          <div className="radio-row" key={r.id}>
+            <button className="radio-play" aria-label="Play radio clip">
+              <PlayIcon size={13} />
+            </button>
+            <div className="radio-body">
+              <div className="radio-meta">
+                <span className="team-stripe" style={{ background: r.teamColor, height: 12 }} />
+                <span className="radio-code">{r.code}</span>
+                <span className="radio-channel">{r.channel}</span>
+                <span className="radio-time">{r.time}</span>
+              </div>
+              <div className="radio-text">"{r.text}"</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Tire status ────────────────────────────────────────────────────────────────
+
+function tempColor(t: number): string {
+  if (t >= 108) return '#FF453A'
+  if (t >= 100) return '#FFD60A'
+  return '#00E676'
+}
+
+function TireStatus() {
+  return (
+    <div className="card">
+      <div className="card-header">
+        <div className="card-title"><span className="card-dot" />Tire Status</div>
+        <span className="card-meta">Est.</span>
+      </div>
+      <div className="tire-list">
+        {tireStatus.map((t) => (
+          <div className="tire-row" key={t.code}>
+            <div className="tire-driver">
+              <span className="team-stripe" style={{ background: t.teamColor }} />
+              <span className="tire-code">{t.code}</span>
+            </div>
+            <span className={`tire-badge ${t.compound}`}>{t.compound}</span>
+            <div className="tire-stat-group">
+              <div className="tire-stat">
+                <span className="tire-stat-label">Age</span>
+                <span className="tire-stat-val">{t.age}L</span>
+              </div>
+              <div className="tire-stat">
+                <span className="tire-stat-label">Temp</span>
+                <span className="tire-stat-val">{t.estTemp}°C</span>
+                <div className="tire-temp-bar">
+                  <div className="tire-temp-fill" style={{ width: `${Math.min(100, (t.estTemp / 130) * 100)}%`, background: tempColor(t.estTemp) }} />
+                </div>
+              </div>
+              <div className="tire-stat">
+                <span className="tire-stat-label">Wear</span>
+                <span className="tire-stat-val">{t.wear}%</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="est-note">Temps & wear are modelled estimates — not available from any public F1 feed.</div>
+    </div>
+  )
+}
+
 // ─── Weather ──────────────────────────────────────────────────────────────────
 
 interface WeatherProps {
-  trackTemp: number
-  airTemp: number
-  humidity: number
-  windSpeed: number
-  windDir: string
-  rainfall: number
-  conditions: string
+  trackTemp: number; airTemp: number; humidity: number
+  windSpeed: number; windDir: string; rainfall: number; conditions: string
 }
 
 function Weather({ trackTemp, airTemp, humidity, windSpeed, windDir: wd, rainfall, conditions }: WeatherProps) {
@@ -221,38 +304,19 @@ function Weather({ trackTemp, airTemp, humidity, windSpeed, windDir: wd, rainfal
         <span className="cond-badge">{conditions}</span>
       </div>
       <div className="weather-body">
-        <div className="w-stat">
-          <span className="w-label">Track Temp</span>
-          <span className="w-val">{trackTemp}<span className="u">°C</span></span>
-        </div>
-        <div className="w-stat">
-          <span className="w-label">Air Temp</span>
-          <span className="w-val">{airTemp}<span className="u">°C</span></span>
-        </div>
-        <div className="w-stat">
-          <span className="w-label">Humidity</span>
-          <span className="w-val">{humidity}<span className="u">%</span></span>
-        </div>
-        <div className="w-stat">
-          <span className="w-label">Wind</span>
-          <span className="w-val">{windSpeed}<span className="u">km/h {wd}</span></span>
-        </div>
-        <div className="w-stat">
-          <span className="w-label">Rainfall</span>
-          <span className="w-val">{rainfall}<span className="u">mm</span></span>
-        </div>
+        <div className="w-stat"><span className="w-label">Track Temp</span><span className="w-val">{trackTemp}<span className="u">°C</span></span></div>
+        <div className="w-stat"><span className="w-label">Air Temp</span><span className="w-val">{airTemp}<span className="u">°C</span></span></div>
+        <div className="w-stat"><span className="w-label">Humidity</span><span className="w-val">{humidity}<span className="u">%</span></span></div>
+        <div className="w-stat"><span className="w-label">Wind</span><span className="w-val">{windSpeed}<span className="u">km/h {wd}</span></span></div>
+        <div className="w-stat"><span className="w-label">Rainfall</span><span className="w-val">{rainfall}<span className="u">mm</span></span></div>
       </div>
     </div>
   )
 }
 
-// ─── Pit Stops ────────────────────────────────────────────────────────────────
+// ─── Pit stops ──────────────────────────────────────────────────────────────────
 
-interface PitEntry {
-  lap: number
-  code: string
-  duration: string
-}
+interface PitEntry { lap: number; code: string; duration: string }
 
 function PitStops({ pits }: { pits: PitEntry[] }) {
   return (
@@ -261,9 +325,7 @@ function PitStops({ pits }: { pits: PitEntry[] }) {
         <div className="card-title"><span className="card-dot" />Pit Stops</div>
         <span className="card-meta">{pits.length} stops</span>
       </div>
-      {pits.length === 0 && (
-        <div style={{ padding: '20px 18px', color: 'var(--gray-400)', fontSize: 12 }}>No pit stops yet</div>
-      )}
+      {pits.length === 0 && <div style={{ padding: '20px 18px', color: 'var(--text-3)', fontSize: 12 }}>No pit stops yet</div>}
       {pits.map((p, i) => (
         <div className="pit-row" key={i}>
           <span className="pit-lap">LAP {p.lap}</span>
@@ -275,13 +337,9 @@ function PitStops({ pits }: { pits: PitEntry[] }) {
   )
 }
 
-// ─── Fastest Laps ─────────────────────────────────────────────────────────────
+// ─── Fastest laps ───────────────────────────────────────────────────────────────
 
-interface FastLap {
-  code: string
-  time: string
-  speed: number
-}
+interface FastLap { code: string; time: string; speed: number }
 
 function FastestLaps({ laps }: { laps: FastLap[] }) {
   return (
@@ -301,7 +359,7 @@ function FastestLaps({ laps }: { laps: FastLap[] }) {
   )
 }
 
-// ─── Championship Standings ───────────────────────────────────────────────────
+// ─── Championship ───────────────────────────────────────────────────────────────
 
 function ChampionshipStandings() {
   const maxPts = championshipStandings[0].points
@@ -318,16 +376,14 @@ function ChampionshipStandings() {
               <td><span className="s-pos">{s.position}</span></td>
               <td>
                 <div className="s-driver">
-                  <div className="team-stripe" style={{ background: s.teamColor, width: 3, height: 18, borderRadius: 2 }} />
+                  <div className="team-stripe" style={{ background: s.teamColor, width: 3, height: 18 }} />
                   <div>
                     <div className="s-code">{s.driver}</div>
                     <div className="s-team">{s.team}</div>
                   </div>
                 </div>
               </td>
-              <td className="s-bar-wrap">
-                <div className="s-bar" style={{ width: `${(s.points / maxPts) * 100}%`, background: s.teamColor }} />
-              </td>
+              <td className="s-bar-wrap"><div className="s-bar" style={{ width: `${(s.points / maxPts) * 100}%`, background: s.teamColor }} /></td>
               <td><span className="s-pts">{s.points}</span></td>
             </tr>
           ))}
@@ -337,63 +393,23 @@ function ChampionshipStandings() {
   )
 }
 
-// ─── Loading / Error ──────────────────────────────────────────────────────────
-
-function StatusScreen({ message, sub }: { message: string; sub?: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
-      <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: -1 }}>F<span style={{ color: 'var(--red)' }}>1</span></div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gray-600)' }}>{message}</div>
-      {sub && <div style={{ fontSize: 12, color: 'var(--gray-400)' }}>{sub}</div>}
-    </div>
-  )
-}
-
-// ─── App ─────────────────────────────────────────────────────────────────────
+// ─── App ────────────────────────────────────────────────────────────────────────
 
 export default function App() {
   const live = useOpenF1()
 
-  // Decide whether to use real or fake data
   const hasRealDrivers = live.drivers.length > 0
   const usingReal = !live.loading && !live.error && hasRealDrivers
 
-  const raceName = live.session
-    ? `${live.session.location} Grand Prix`
-    : fakeRace.name
-
-  const circuit = live.session?.circuit_short_name ?? fakeRace.circuit
-
-  const sessionType = live.session?.session_name ?? fakeRace.sessionType
-
+  const raceName = live.session ? `${live.session.location} Grand Prix` : fakeRace.name
   const currentLap = live.currentLap || fakeRace.lap
   const totalLaps = live.totalLaps || fakeRace.totalLaps
 
   const drivers: DriverRow[] = usingReal
     ? live.drivers
-    : fakeDrivers.map((d) => ({
-        position: d.position,
-        number: d.number,
-        code: d.code,
-        name: d.name,
-        team: d.team,
-        teamColor: d.teamColor,
-        gap: d.gap,
-        interval: d.interval,
-        lastLap: d.lastLap,
-        bestLap: d.bestLap,
-        tire: d.tire,
-        tireAge: d.tireAge,
-        pitstops: d.pitstops,
-        drs: d.drs,
-        speed: d.speed,
-        throttle: d.throttle,
-        brake: d.brake,
-        gear: d.gear,
-        rpm: d.rpm,
-      }))
+    : fakeDrivers.map((d) => ({ ...d }))
 
-  const leadDriver = drivers[0] ?? fakeDrivers[0]
+  const leadDriver = drivers[0] ?? (fakeDrivers[0] as DriverRow)
 
   const weatherProps: WeatherProps = live.weather
     ? {
@@ -443,33 +459,11 @@ export default function App() {
     return (
       <div className="app">
         <Header raceName="Loading..." flag="GREEN" lap={0} totalLaps={0} isLive={false} />
-        <StatusScreen message="Connecting to OpenF1..." sub="Fetching latest session data" />
-      </div>
-    )
-  }
-
-  if (live.error) {
-    return (
-      <div className="app">
-        <Header raceName={fakeRace.name} flag={fakeRace.flag} lap={fakeRace.lap} totalLaps={fakeRace.totalLaps} isLive={false} />
-        <div style={{ padding: '8px 24px', background: '#FFF3F3', borderBottom: '1px solid #FFD0D0', fontSize: 12, color: '#CC0000' }}>
-          OpenF1 unavailable — showing demo data. Error: {live.error}
+        <div className="status-screen">
+          <div className="status-logo">F<span>1</span></div>
+          <div className="status-msg">Connecting to OpenF1…</div>
+          <div className="status-sub">Fetching the latest session</div>
         </div>
-        <RaceBar circuit={fakeRace.circuit} sessionType={fakeRace.sessionType} timeRemaining={fakeRace.timeRemaining} lap={fakeRace.lap} totalLaps={fakeRace.totalLaps} />
-        <main className="main">
-          <div className="grid-top">
-            <LiveTiming drivers={drivers} lap={fakeRace.lap} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <Telemetry driver={leadDriver as DriverRow} />
-              <Weather {...weatherProps} />
-            </div>
-          </div>
-          <div className="grid-bottom">
-            <PitStops pits={pitEntries} />
-            <FastestLaps laps={fastLaps} />
-            <ChampionshipStandings />
-          </div>
-        </main>
       </div>
     )
   }
@@ -477,29 +471,33 @@ export default function App() {
   return (
     <div className="app">
       <Header raceName={raceName} flag={flag} lap={currentLap} totalLaps={totalLaps} isLive={live.isLive} />
-      {!usingReal && (
-        <div style={{ padding: '8px 24px', background: '#FFFBF0', borderBottom: '1px solid #FFE9A0', fontSize: 12, color: '#8B6914' }}>
-          No live timing data yet — showing demo data. Data will populate when a session is active.
-        </div>
+
+      {live.error && (
+        <div className="banner error">OpenF1 unavailable — showing demo data. ({live.error})</div>
       )}
-      <RaceBar
-        circuit={circuit}
-        sessionType={sessionType}
-        timeRemaining={live.isLive ? fakeRace.timeRemaining : ''}
-        lap={currentLap}
-        totalLaps={totalLaps}
-      />
+      {!live.error && !usingReal && (
+        <div className="banner demo">No live timing data right now — showing demo data. Real data appears when a session is active.</div>
+      )}
+
       <main className="main">
-        <div className="grid-top">
+        <div className="stage-grid">
+          <VideoStage raceName={raceName} lap={currentLap} totalLaps={totalLaps} />
           <LiveTiming drivers={drivers} lap={currentLap} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <Telemetry driver={leadDriver as DriverRow} />
-            <Weather {...weatherProps} />
-          </div>
         </div>
-        <div className="grid-bottom">
+
+        <div className="data-grid">
+          <Telemetry driver={leadDriver} />
+          <TeamRadio />
+          <TireStatus />
+        </div>
+
+        <div className="data-grid">
+          <Weather {...weatherProps} />
           <PitStops pits={pitEntries} />
           <FastestLaps laps={fastLaps} />
+        </div>
+
+        <div className="data-grid">
           <ChampionshipStandings />
         </div>
       </main>
