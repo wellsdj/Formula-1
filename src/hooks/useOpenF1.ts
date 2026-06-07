@@ -2,6 +2,26 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api/openf1'
 import type { Session, Driver, Position, Interval, Lap, Stint, CarData, Weather, Pit, RaceControl } from '../api/openf1'
 
+// Find the most recent session that has already ended (free historical data).
+// Walks back through years in case we're early in a new season.
+async function mostRecentFinishedSession(): Promise<Session | undefined> {
+  const now = Date.now()
+  const thisYear = new Date().getFullYear()
+  for (const year of [thisYear, thisYear - 1]) {
+    let sessions: Session[]
+    try {
+      sessions = await api.sessions.byYear(year)
+    } catch {
+      continue
+    }
+    const finished = sessions
+      .filter((s) => new Date(s.date_end).getTime() < now)
+      .sort((a, b) => new Date(b.date_end).getTime() - new Date(a.date_end).getTime())
+    if (finished.length) return finished[0]
+  }
+  return undefined
+}
+
 function latestPerDriver<T extends { driver_number: number; date: string }>(items: T[]): Map<number, T> {
   const map = new Map<number, T>()
   for (const item of items) {
@@ -101,8 +121,22 @@ export function useOpenF1(): RaceData {
       try {
         setLoading(true)
         setError(null)
-        const sessions = await api.sessions.latest()
-        const s = sessions[0]
+
+        // Try the live/latest session first. If it requires a paid account
+        // (401 during a live race window), fall back to the most recent
+        // FINISHED session — historical data is free.
+        let s: Session | undefined
+        try {
+          const sessions = await api.sessions.latest()
+          s = sessions[0]
+        } catch {
+          s = undefined
+        }
+
+        if (!s) {
+          s = await mostRecentFinishedSession()
+        }
+
         if (!s || cancelled) return
         setSession(s)
 

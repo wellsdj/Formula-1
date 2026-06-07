@@ -134,6 +134,7 @@ export interface RaceControl {
 export const api = {
   sessions: {
     latest: () => get<Session>('/sessions', { session_key: 'latest' }),
+    byYear: (year: number) => get<Session>('/sessions', { year }),
   },
   drivers: {
     bySession: (session_key: number) => get<Driver>('/drivers', { session_key }),
