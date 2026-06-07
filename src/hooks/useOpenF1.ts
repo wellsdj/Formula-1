@@ -122,15 +122,29 @@ export function useOpenF1(): RaceData {
         setLoading(true)
         setError(null)
 
-        // Try the live/latest session first. If it requires a paid account
-        // (401 during a live race window), fall back to the most recent
-        // FINISHED session — historical data is free.
+        // Try the live/latest session first. Its metadata is free even during
+        // a live race, but the actual timing data is paywalled on the free
+        // tier. So we probe one timing endpoint: if it 401s, the live feed is
+        // locked and we fall back to the most recent FINISHED session, whose
+        // data is free.
         let s: Session | undefined
         try {
           const sessions = await api.sessions.latest()
           s = sessions[0]
         } catch {
           s = undefined
+        }
+
+        // If the latest session is live, verify we can actually read its
+        // timing data. If it 401s or comes back empty (free tier can't see
+        // the live feed), drop back to the last finished session.
+        if (s && s.status === 'started') {
+          try {
+            const probe = await api.position.latest(s.session_key)
+            if (!probe.length) s = undefined
+          } catch {
+            s = undefined
+          }
         }
 
         if (!s) {
