@@ -1,10 +1,8 @@
-const BASE = 'https://api.openf1.org/v1'
-
 async function get<T>(path: string, params: Record<string, string | number> = {}): Promise<T[]> {
   const qs = new URLSearchParams(
-    Object.entries(params).map(([k, v]) => [k, String(v)])
+    Object.entries({ path, ...params }).map(([k, v]) => [k, String(v)])
   ).toString()
-  const url = `${BASE}${path}${qs ? `?${qs}` : ''}`
+  const url = `/api/openf1?${qs}`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`OpenF1 ${path} → ${res.status}`)
   return res.json()
